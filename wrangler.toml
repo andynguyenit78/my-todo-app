@@ -2,12 +2,15 @@ name = "my-todo-app"
 compatibility_date = "2024-01-01"
 
 [build]
-command = "npm run build"
+command = "npm install && npm run build"
 output_dir = "dist"
 
 [site]
 bucket = "./dist"
 entry-point = "."
+
+# This is the key property Cloudflare Pages needs
+pages_build_output_dir = "dist"
 
 [env.production]
 name = "my-todo-app-prod"
