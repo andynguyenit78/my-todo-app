@@ -1,6 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { TodoItem } from '../types/todo';
 import ImageViewer from './ImageViewer';
+import { Column } from '../types/board';
+import { getCompletionRate, getAverageTimeToComplete, getTotalTodos } from '../utils/analytics';
+import { logger } from '../utils/logger';
+import { useBoard } from '../hooks/useBoard';
 
 interface TodoModalProps {
   todo: TodoItem;
@@ -10,7 +14,8 @@ interface TodoModalProps {
   onDelete: (todoId: string) => void;
 }
 
-export default function TodoModal({ todo, isOpen, onClose, onSave, onDelete }: TodoModalProps) {
+const TodoModal: React.FC<TodoModalProps> = ({ todo, isOpen, onClose, onSave, onDelete }) => {
+  const { columns, backgroundTheme, customColumns } = useBoard();
   const [title, setTitle] = useState(todo.text);
   const [description, setDescription] = useState(todo.description);
   const [images, setImages] = useState(todo.images);
@@ -105,30 +110,41 @@ export default function TodoModal({ todo, isOpen, onClose, onSave, onDelete }: T
     return { trackEvent, trackTodoMetrics };
   };
 
-  const useHistory = <T>(initialState: T) => {
+  const useHistory = <T extends unknown>(initialState: T) => {
     const [history, setHistory] = useState<T[]>([initialState]);
     const [currentIndex, setCurrentIndex] = useState(0);
 
-    const undo = () => {
-      if (currentIndex > 0) {
-        setCurrentIndex(prev => prev - 1);
-      }
-    };
+    const canUndo = currentIndex > 0;
+    const canRedo = currentIndex < history.length - 1;
 
-    const redo = () => {
-      if (currentIndex < history.length - 1) {
-        setCurrentIndex(prev => prev + 1);
+    const undo = useCallback(() => {
+      if (canUndo) {
+        setCurrentIndex(currentIndex - 1);
       }
-    };
+    }, [canUndo, currentIndex]);
+
+    const redo = useCallback(() => {
+      if (canRedo) {
+        setCurrentIndex(currentIndex + 1);
+      }
+    }, [canRedo, currentIndex]);
+
+    const setState = useCallback((newState: T) => {
+      if (history[currentIndex] !== newState) {
+        const newHistory = history.slice(0, currentIndex + 1);
+        newHistory.push(newState);
+        setHistory(newHistory);
+        setCurrentIndex(newHistory.length - 1);
+      }
+    }, [history, currentIndex]);
 
     return {
       state: history[currentIndex],
+      setState,
       undo,
       redo,
-      addToHistory: (newState: T) => {
-        setHistory(prev => [...prev.slice(0, currentIndex + 1), newState]);
-        setCurrentIndex(prev => prev + 1);
-      }
+      canUndo,
+      canRedo,
     };
   };
 
@@ -235,4 +251,6 @@ export default function TodoModal({ todo, isOpen, onClose, onSave, onDelete }: T
       />
     </div>
   );
-} 
+}
+
+export default TodoModal; 

@@ -16,6 +16,7 @@ export interface TodoItem {
   category?: Category;
   createdAt?: string;
   updatedAt?: string;
+  completedAt?: string;
 }
 
 export interface Column {
